@@ -159,6 +159,7 @@ class GoogleV3(Geocoder):
     def geocode(
             self,
             query=None,
+            place_id=None,
             exactly_one=True,
             timeout=DEFAULT_SENTINEL,
             bounds=None,
@@ -178,6 +179,11 @@ class GoogleV3(Geocoder):
 
             .. versionchanged:: 1.14.0
                Now ``query`` is optional if ``components`` param is set.
+
+        :param str place_id: Address details are obtained using google
+                             place id.It is not used with the query or bounds
+                             parameter.
+                >>> g.geocode(place_id='ChIJOcfP0Iq2j4ARDrXUa7ZWs34')
 
         :param bool exactly_one: Return one result or a list of results, if
             available.
@@ -216,8 +222,18 @@ class GoogleV3(Geocoder):
         params = {
             'sensor': str(sensor).lower()
         }
-        if query is None and not components:
+
+        if not any([query, components, place_id]):
             raise ValueError('Either `query` or `components` must be set.`')
+
+        if place_id and (bounds or query):
+            raise ValueError(
+                'Only one of the `query` or `place id` or `bounds` '
+                ' parameters must be entered.')
+
+        if place_id:
+            params['place_id'] = place_id
+
         if query is not None:
             params['address'] = self.format_string % query
         if self.api_key:
@@ -248,7 +264,6 @@ class GoogleV3(Geocoder):
             url = self._get_signed_url(params)
         else:
             url = "?".join((self.api, urlencode(params)))
-
         logger.debug("%s.geocode: %s", self.__class__.__name__, url)
         return self._parse_json(
             self._call_geocoder(url, timeout=timeout), exactly_one
@@ -495,3 +510,4 @@ class GoogleV3(Geocoder):
             raise GeocoderQueryError('Probably missing address or latlng.')
         else:
             raise GeocoderQueryError('Unknown error.')
+
